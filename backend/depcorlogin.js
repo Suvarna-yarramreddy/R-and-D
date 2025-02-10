@@ -24,8 +24,8 @@ app.post('/coordinatorlogin', async (req, res) => {
 
   try {
     // Query Firestore for the matching document
-    const snapshot = await db.collection('coordinator')
-      .where('corid', '==', coordinatorid) // Map 'coordinatorid' to 'corid'
+    const snapshot = await db.collection('coordinators')
+      .where('coordinatorid', '==', coordinatorid) // Map 'coordinatorid' to 'corid'
       .where('department', '==', department)
       .get();
 
@@ -40,7 +40,7 @@ app.post('/coordinatorlogin', async (req, res) => {
     // Compare the password
     if (coordinator.password === password1) {
       // Login successful
-      return res.status(200).json({ success: true, corid: coordinator.corid });
+      return res.status(200).json({ success: true, coordinatorid: coordinator.coordinatorid });
     } else {
       // Password doesn't match
       return res.status(401).json({ success: false, message: 'Invalid credentials' });

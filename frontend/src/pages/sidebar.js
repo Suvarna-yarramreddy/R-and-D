@@ -17,8 +17,11 @@ const CollapsibleSection = ({ title, items }) => {
       {isOpen && (
         <ul className="list-unstyled ms-3">
           {items.map((item, index) => (
-            <li key={index} style={{ marginBottom: "8px" }}>
-              <Link to={`/${item.replace(/\s+/g, "").toLowerCase()}`} style={{ textDecoration: "none", color: "#333" }}>
+            <li key={index} className="mb-2">
+              <Link
+                to={`/${item.replace(/\s+/g, "").toLowerCase()}`}
+                className="text-dark text-decoration-none"
+              >
                 {item}
               </Link>
             </li>
@@ -41,7 +44,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="bg-light p-3">
+    <div className="bg-primary bg-opacity-25 min-vh-100 p-3">
       <ul className="list-unstyled m-0">
         {sections.map((section, index) => (
           <CollapsibleSection key={index} title={section.title} items={section.items} />

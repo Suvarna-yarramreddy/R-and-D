@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 
 const CorViewPublications = () => {
   const [publications, setPublications] = useState([]);
-  const [visibleDocumentId, setVisibleDocumentId] = useState(null);
+  const [visibleDocumentId, setVisibleDocumentId] = useState(null); // Keep track of the currently visible publication details
   const [rejectionReason, setRejectionReason] = useState("");
   const [publicationToReject, setPublicationToReject] = useState(null);
   const [department, setDepartment] = useState("");
-  const [error, setError] = useState(null); // State for error messages
+  const [error, setError] = useState(null);
   const coordinatorId = sessionStorage.getItem("coordinatorid");
 
   useEffect(() => {
@@ -26,7 +26,7 @@ const CorViewPublications = () => {
         );
         if (!publicationsResponse.ok) throw new Error(await publicationsResponse.text());
         const publicationsData = await publicationsResponse.json();
-        setPublications(publicationsData);
+        setPublications(publicationsData || []); // Ensure it's an array
       } catch (error) {
         setError("Error fetching data. Please try again.");
         console.error(error);
@@ -39,6 +39,7 @@ const CorViewPublications = () => {
   }, [coordinatorId]);
 
   const togglePublicationDetails = (documentId) => {
+    // Toggle visibility of publication details based on the documentId
     setVisibleDocumentId((prevId) => (prevId === documentId ? null : documentId));
   };
 
@@ -88,7 +89,7 @@ const CorViewPublications = () => {
         {department || "Loading..."}
       </p>
       {error && <div className="alert alert-danger">{error}</div>}
-      {publications.length > 0 ? (
+      {publications && publications.length > 0 ? (
         <div className="row">
           {publications.map((pub) => (
             <div className="col-md-6 mb-4" key={pub.documentid}>
@@ -101,14 +102,38 @@ const CorViewPublications = () => {
                       onClick={() => togglePublicationDetails(pub.documentid)}
                       className="text-primary"
                     >
-                      {pub.citeAs}
+                      {pub.citeAs || "No Citation Provided"} {/* Fallback */}
                     </a>
                   </h5>
                   {visibleDocumentId === pub.documentid && (
-                    <div className="card-details mt-2">
-                      {/* Render publication details here */}
-                    </div>
-                  )}
+  <div className="card-details mt-2">
+    <p><strong>Author Status:</strong> {pub.authorStatus || "No Author Status Available"}</p>
+    <p><strong>Cite As:</strong> {pub.citeAs || "No Citation Provided"}</p>
+    <p><strong>Co-Authors:</strong> {pub.coAuthors || "No Co-Authors"}</p>
+    <p><strong>DOI:</strong> {pub.doi || "No DOI Available"}</p>
+    <p><strong>Faculty ID:</strong> {pub.faculty_id || "No Faculty ID"}</p>
+    <p><strong>First Author Affiliation:</strong> {pub.firstAuthorAffiliation || "No Affiliation"}</p>
+    <p><strong>First Author Name:</strong> {pub.firstAuthorName || "No Name Available"}</p>
+    <p><strong>Impact Factor:</strong> {pub.impactFactor || "No Impact Factor"}</p>
+    <p><strong>Indexed:</strong> {pub.indexed || "No Indexing Information"}</p>
+    <p><strong>ISSN/ISBN:</strong> {pub.issnIsbn || "No ISSN/ISBN"}</p>
+    <p><strong>Link of Paper:</strong> <a href={pub.linkOfPaper || "#"} target="_blank" rel="noopener noreferrer">{pub.linkOfPaper || "No link available"}</a></p>
+    <p><strong>Month and Year:</strong> {pub.monthYear || "No Date Available"}</p>
+    <p><strong>Name of Journal/Conference:</strong> {pub.nameOfJournalConference || "No Journal/Conference Name"}</p>
+    <p><strong>Name of Publisher:</strong> {pub.nameOfPublisher || "No Publisher Name"}</p>
+    <p><strong>Nature of Publication:</strong> {pub.natureOfPublication || "No Publication Nature"}</p>
+    <p><strong>Page No:</strong> {pub.pageNo || "No Page Number"}</p>
+    <p><strong>Proof of Publication:</strong> <a href={`http://localhost:5002${pub.proofOfPublication}`} target="_blank" rel="noopener noreferrer">View Proof</a></p>
+    <p><strong>Quartile:</strong> {pub.quartile || "No Quartile Info"}</p>
+    <p><strong>Scopus Link:</strong> <a href={pub.scopusLink || "#"} target="_blank" rel="noopener noreferrer">{pub.scopusLink || "No Scopus Link"}</a></p>
+    <p><strong>Status:</strong> {pub.status || "No Status"}</p>
+    <p><strong>Title of Paper:</strong> {pub.titleOfPaper || "No Title Provided"}</p>
+    <p><strong>Title of Chapter:</strong> {pub.titleofChapter || "No Chapter Title"}</p>
+    <p><strong>Type of Publication:</strong> {pub.typeOfPublication || "No Type"}</p>
+    <p><strong>Volume:</strong> {pub.volume || "No Volume Info"}</p>
+  </div>
+)}
+
                   <div className="mt-3">
                     <button
                       className="btn btn-success me-2"

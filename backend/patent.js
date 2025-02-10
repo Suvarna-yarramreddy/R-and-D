@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
-const { v4: uuidv4 } = require("uuid"); // For generating unique IDs for patents
+const { v4: uuidv4 } = require("uuid"); // For generating unique patent IDs
 
 // Firebase Admin SDK initialization
 const serviceAccount = require("./key.json"); // Replace with your Firebase Admin SDK JSON file
@@ -16,7 +16,6 @@ initializeApp({
 });
 
 const db = getFirestore();
-
 const app = express();
 
 // Middleware
@@ -39,7 +38,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Route to add patent with file upload
+/**
+ * Route to add a patent under a faculty's document
+ */
 app.post("/addPatent", upload.single("proofOfPatent"), async (req, res) => {
     const {
         faculty_id,
@@ -57,13 +58,13 @@ app.post("/addPatent", upload.single("proofOfPatent"), async (req, res) => {
         dateOfGranted,
     } = req.body;
 
-    const proofOfPatent = req.file ? req.file.path : null;
+    const proofOfPatent = req.file ? req.file.path.replace(/\\/g, "/") : null;
 
     if (!proofOfPatent) {
         return res.status(400).send("Proof of patent file is required.");
     }
 
-    // Handle invalid JSON in inventors field
+    // Parse inventors JSON if provided
     let parsedInventors = null;
     if (inventors) {
         try {
@@ -75,9 +76,8 @@ app.post("/addPatent", upload.single("proofOfPatent"), async (req, res) => {
 
     const patentId = uuidv4(); // Generate a unique ID for the patent
 
-    const patentData = {
+    const newPatent = {
         patentId,
-        faculty_id,
         category,
         iprType,
         applicationNumber,
@@ -94,7 +94,19 @@ app.post("/addPatent", upload.single("proofOfPatent"), async (req, res) => {
     };
 
     try {
-        await db.collection("patents").doc(patentId).set(patentData);
+        const facultyDocRef = db.collection("patents").doc(faculty_id);
+        const doc = await facultyDocRef.get();
+
+        if (doc.exists) {
+            // Update existing faculty document by adding a new patent to the array
+            await facultyDocRef.update({
+                patents: [...doc.data().patents, newPatent],
+            });
+        } else {
+            // Create a new faculty document with the first patent
+            await facultyDocRef.set({ patents: [newPatent] });
+        }
+
         res.status(200).send("Patent added successfully");
     } catch (error) {
         console.error("Error adding patent:", error);
@@ -102,102 +114,70 @@ app.post("/addPatent", upload.single("proofOfPatent"), async (req, res) => {
     }
 });
 
-// Route to get patents by faculty_id
+/**
+ * Route to get patents by faculty_id
+ */
 app.get("/getPatents/:faculty_id", async (req, res) => {
     const faculty_id = req.params.faculty_id;
 
     try {
-        const snapshot = await db
-            .collection("patents")
-            .where("faculty_id", "==", faculty_id)
-            .get();
+        const docRef = db.collection("patents").doc(faculty_id);
+        const doc = await docRef.get();
 
-        if (snapshot.empty) {
+        if (!doc.exists) {
             return res.status(404).send("No patents found for this faculty.");
         }
 
-        const patents = [];
-        snapshot.forEach((doc) => {
-            patents.push({ id: doc.id, ...doc.data() });
-        });
-
-        patents.forEach((patent) => {
-            if (patent.proofOfPatent) {
-                patent.proofOfPatent = `${patent.proofOfPatent.replace(/\\/g, "/")}`;
-            }
-        });
-
-        res.json(patents);
+        res.json(doc.data().patents || []);
     } catch (error) {
         console.error("Error fetching patents:", error);
         res.status(500).send("Error fetching patents.");
     }
 });
 
-// Route to update patent by ID
-app.put("/update-patent/:id", upload.single("proofOfPatent"), async (req, res) => {
-    const patentId = req.params.id;
+/**
+ * Route to update a specific patent by ID inside a faculty document
+ */
+app.put("/update-patent/:faculty_id/:patentId", upload.single("proofOfPatent"), async (req, res) => {
+    const { faculty_id, patentId } = req.params;
 
     try {
-        const docRef = db.collection("patents").doc(patentId);
+        const docRef = db.collection("patents").doc(faculty_id);
         const doc = await docRef.get();
 
         if (!doc.exists) {
+            return res.status(404).send("Faculty not found.");
+        }
+
+        let patents = doc.data().patents;
+        const patentIndex = patents.findIndex((p) => p.patentId === patentId);
+
+        if (patentIndex === -1) {
             return res.status(404).send("Patent not found.");
         }
 
-        const existingData = doc.data();
+        const existingPatent = patents[patentIndex];
 
-        const {
-            faculty_id = existingData.faculty_id,
-            category = existingData.category,
-            iprType = existingData.iprType,
-            applicationNumber = existingData.applicationNumber,
-            applicantName = existingData.applicantName,
-            department = existingData.department,
-            filingDate = existingData.filingDate,
-            inventionTitle = existingData.inventionTitle,
-            numOfInventors = existingData.numOfInventors,
-            inventors = existingData.inventors,
-            status = existingData.status,
-            dateOfPublished = existingData.dateOfPublished,
-            dateOfGranted = existingData.dateOfGranted,
-        } = req.body;
-
-        let proofOfPatent = existingData.proofOfPatent;
-
-        if (req.file) {
-            proofOfPatent = req.file.path;
-        }
-
-        // Handle invalid JSON in inventors field
-        let parsedInventors = inventors;
-        if (typeof inventors === 'string') {
-            try {
-                parsedInventors = JSON.parse(inventors);
-            } catch (error) {
-                return res.status(400).send("Invalid JSON format for inventors.");
-            }
-        }
-
-        const updatedData = {
-            faculty_id,
-            category,
-            iprType,
-            applicationNumber,
-            applicantName,
-            department,
-            filingDate,
-            inventionTitle,
-            numOfInventors,
-            inventors: parsedInventors,
-            status,
-            dateOfPublished,
-            dateOfGranted,
-            proofOfPatent,
+        // Update fields
+        patents[patentIndex] = {
+            ...existingPatent,
+            category: req.body.category || existingPatent.category,
+            iprType: req.body.iprType || existingPatent.iprType,
+            applicationNumber: req.body.applicationNumber || existingPatent.applicationNumber,
+            applicantName: req.body.applicantName || existingPatent.applicantName,
+            department: req.body.department || existingPatent.department,
+            filingDate: req.body.filingDate || existingPatent.filingDate,
+            inventionTitle: req.body.inventionTitle || existingPatent.inventionTitle,
+            numOfInventors: req.body.numOfInventors || existingPatent.numOfInventors,
+            inventors: req.body.inventors ? JSON.parse(req.body.inventors) : existingPatent.inventors,
+            status: req.body.status || existingPatent.status,
+            dateOfPublished: req.body.dateOfPublished || existingPatent.dateOfPublished,
+            dateOfGranted: req.body.dateOfGranted || existingPatent.dateOfGranted,
+            proofOfPatent: req.file ? req.file.path.replace(/\\/g, "/") : existingPatent.proofOfPatent,
         };
 
-        await docRef.update(updatedData);
+        await docRef.update({ patents });
+
         res.status(200).send("Patent updated successfully");
     } catch (error) {
         console.error("Error updating patent:", error);
@@ -205,7 +185,9 @@ app.put("/update-patent/:id", upload.single("proofOfPatent"), async (req, res) =
     }
 });
 
-// Start the server
+/**
+ * Start the server
+ */
 const PORT = 5001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

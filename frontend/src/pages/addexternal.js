@@ -78,22 +78,7 @@ const ExternalFunded = () => {
           error = "Email must be valid.";
         }
         break;
-      case "copiName":
-      case "copiDept":
-        if (value && !/^[a-zA-Z\s]+$/.test(value)) {
-          error = `${name === "copiName" ? "COPI Name" : "COPI Department"} should only contain letters.`;
-        }
-        break;
-      case "copiContact":
-        if (value && !/^\d{10}$/.test(value)) {
-          error = "Contact Number must be a valid 10-digit number.";
-        }
-        break;
-      case "copiEmail":
-        if (value && !/\S+@\S+\.\S+/.test(value)) {
-          error = "Email must be valid.";
-        }
-        break;
+
       case "title":
       case "objectives":
       case "outcomes":
@@ -177,16 +162,23 @@ const ExternalFunded = () => {
       if (Object.keys(formErrors).length === 0) {
         console.log("No validation errors, proceeding to submit.");
   
-        // Include faculty_id in form data
+        // Ensure faculty_id is available (replace with your actual method to get it)
+        if (!faculty_id) {
+          console.error("Error: Faculty ID is missing.");
+          alert("Faculty ID is required.");
+          return;
+        }
+  
+        // Ensure coInvestigators is an array (convert if it's a string)
         const updatedFormData = {
           ...formData,
-          faculty_id: faculty_id, // Replace with the actual faculty_id from session or state
+          faculty_id: faculty_id
         };
   
-        console.log("Updated Form Data:", updatedFormData);
+       
   
         // Make API call to submit the form data to the server
-        const response = await fetch("http://localhost:5004/submitExternal", {
+        const response = await fetch("http://localhost:5003/addFundedProject", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -196,40 +188,40 @@ const ExternalFunded = () => {
   
         if (response.ok) {
           console.log("Form data submitted to server successfully.");
-          alert("Form submitted successfully!");
   
           // Navigate to /viewexternal after successful submission
-          navigate("/viewexternal");
-        } else {
-          console.error("Error submitting form data to server:", response.statusText);
-          alert("Error: Could not save data. Please try again.");
-        }
+          navigate("/viewprojects");
   
-        // Reset form logic
-        setFormData({
-          financialYear: "",
-          applicationNumber: "",
-          agency: "",
-          scheme: "",
-          piName: "",
-          piDept: "",
-          piContact: "",
-          piEmail: "",
-          copiName: "",
-          copiDept: "",
-          copiContact: "",
-          copiEmail: "",
-          duration: "",
-          title: "",
-          status: "",
-          startDate: "",
-          objectives: "",
-          outcomes: "",
-          amountApplied: "",
-          amountReceived: "",
-          amountSanctioned: "",
-        });
-        setErrors({});
+          // Reset form fields
+          setFormData({
+            financialYear: "",
+            applicationNumber: "",
+            agency: "",
+            scheme: "",
+            piName: "",
+            piDept: "",
+            piContact: "",
+            piEmail: "",
+            copiName: "",
+            copiDept: "",
+            copiContact: "",
+            copiEmail: "",
+            duration: "",
+            title: "",
+            status: "",
+            startDate: "",
+            objectives: "",
+            outcomes: "",
+            amountApplied: "",
+            amountReceived: "",
+            amountSanctioned: "",
+          });
+          setErrors({});
+        } else {
+          const errorText = await response.text();
+          console.error("Error submitting form data to server:", errorText);
+          alert(`Error: ${errorText}`);
+        }
       } else {
         console.log("Validation failed.");
         setErrors(formErrors);

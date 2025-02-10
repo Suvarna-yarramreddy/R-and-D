@@ -52,7 +52,7 @@ const PatentsPage = () => {
             {patents.length > 0 ? (
                 <div className="row">
                     {patents.map((pat) => (
-                        <div className="col-md-6 mb-4" key={pat.patent_id}>
+                        <div className="col-md-6 mb-4" key={pat.patentId}>
                             <div className="card">
                                 <div className="card-body d-flex flex-column">
                                 <div className="d-flex justify-content-between align-items-center mb-3">
@@ -60,8 +60,8 @@ const PatentsPage = () => {
                                         Title of Invention:&nbsp;
                                         <a
                                             href="#!"
-                                            onClick={() => handleToggleDetails(pat.patent_id)}
-                                            aria-expanded={visibleDetails === pat.patent_id}
+                                            onClick={() => handleToggleDetails(pat.patentId)}
+                                            aria-expanded={visibleDetails === pat.patentId}
                                             className="text-primary"
                                         >
                                             {pat.inventionTitle}
@@ -89,7 +89,7 @@ const PatentsPage = () => {
                                             )}
                                         </div>
                                         </div>
-                                    {visibleDetails === pat.patent_id && (
+                                    {visibleDetails === pat.patentId && (
                                         <div className="card-details overflow-auto" style={{ maxHeight: '200px' }}>
                                                 {pat.category && <p><strong>Category:</strong> {pat.category}</p>}
                                                 {pat.iprType && <p><strong>Type of IPR:</strong> {pat.iprType}</p>}
@@ -98,7 +98,10 @@ const PatentsPage = () => {
                                                 {pat.department && <p><strong>Department:</strong> {pat.department}</p>}
                                                 {pat.filingDate && <p><strong>Date of Filing:</strong> {pat.filingDate}</p>}
                                                 {pat.numOfInventors && <p><strong>Number of Inventors:</strong> {pat.numOfInventors}</p>}
-                                                {pat.inventors && <p><strong>Name of Inventors:</strong> {pat.inventors}</p>}
+                                                {Array.isArray(pat.inventors) && pat.inventors.length > 0 && (
+                                                    <p><strong>Name of Inventors:</strong> {pat.inventors.join(', ')}</p>
+                                                )}
+
                                                 {pat.dateOfPublished && <p><strong>Date of Published:</strong> {pat.dateOfPublished}</p>}
                                                 {pat.dateOfGranted && <p><strong>Date of Granted:</strong> {pat.dateOfGranted}</p>}
                                                 {pat.proofOfPatent && (

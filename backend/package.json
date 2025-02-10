@@ -16,6 +16,7 @@
     "start-server6": "node deptcorviewpub.js",
     "start-server7": "node deptcorviewpatents.js",
     "start-server8": "node seedmoney.js",
-    "start": "npm-run-all --parallel start-server1 start-server2 start-server3 start-server4 start-server5 start-server6 start-server7 start-server8"
+    "start-server9": "node external.js",
+    "start": "npm-run-all --parallel start-server1 start-server2 start-server3 start-server4 start-server5 start-server6 start-server7 start-server8 start-server9"
   }
 }

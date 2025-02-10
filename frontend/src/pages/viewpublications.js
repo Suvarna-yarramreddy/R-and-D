@@ -6,7 +6,7 @@ const PublicationsPage = () => {
     const faculty_id = sessionStorage.getItem("faculty_id");
 
     // State to track which publication's details should be visible
-    const [visibleDetails, setVisibleDetails] = useState(null);
+    const [visibleDetails, setVisibleDetails] = useState({});
     const navigate = useNavigate(); // Updated hook for navigation
 
     useEffect(() => {
@@ -29,9 +29,11 @@ const PublicationsPage = () => {
         fetchPublications();
     }, [faculty_id]);
 
-    // Toggle visibility of publication details
     const handleToggleDetails = (publicationId) => {
-        setVisibleDetails(visibleDetails === publicationId ? null : publicationId);
+        setVisibleDetails(prevState => ({
+            ...prevState, // Keep the existing state
+            [publicationId]: !prevState[publicationId] // Toggle the specific publication's details
+        }));
     };
 
     // Navigate to the Edit Publication page and pass the publication data
@@ -45,7 +47,7 @@ const PublicationsPage = () => {
             {publications.length > 0 ? (
                 <div className="row">
                     {publications.map(pub => (
-                        <div className="col-md-6 mb-4" key={pub.publication_id}>
+                        <div className="col-md-6 mb-4" key={pub.publicationId}>
                             <div className="card">
                                 <div className="card-body d-flex flex-column">
                                     <div className="d-flex justify-content-between align-items-center mb-3">
@@ -53,7 +55,7 @@ const PublicationsPage = () => {
                                             Cite As:&nbsp;
                                             <a
                                                 href="#!"
-                                                onClick={() => handleToggleDetails(pub.publication_id)}
+                                                onClick={() => handleToggleDetails(pub.publicationId)}
                                                 className="text-primary"
                                             >
                                                 {pub.citeAs}
@@ -64,14 +66,14 @@ const PublicationsPage = () => {
                                             <span className="text-dark ms-2">{pub.status}</span>
 
                                             {/* Conditionally display rejection reason */}
-                                            {pub.status === 'Rejected by Department R&D Coordinator' && pub.rejection_reason && (
+                                            {pub.status === 'Rejected by department RandD Coordinator' && pub.rejectionReason && (
                                                 <div className="mt-2">
-                                                    <strong>Reason:</strong> {pub.rejection_reason}
+                                                    <strong>Reason:</strong> {pub.rejectionReason}
                                                 </div>
                                             )}
                                             
                                             {/* Show "Edit" button only for rejected publications */}
-                                            {pub.status === 'Rejected by Department R&D Coordinator' && (
+                                            {pub.status === 'Rejected by department RandD Coordinator' && (
                                                 <button
                                                     className="btn btn-warning mt-2"
                                                     onClick={() => handleEditClick(pub)} // Handle edit button click
@@ -83,7 +85,7 @@ const PublicationsPage = () => {
                                     </div>
 
                                     {/* Only show details for the clicked publication */}
-                                    {visibleDetails === pub.publication_id && (
+                                    {visibleDetails[pub.publicationId] && (
                                         <div className="overflow-auto" style={{ maxHeight: '200px' }}>
                                             <div className="card-details">
                                                 <div>
@@ -115,8 +117,9 @@ const PublicationsPage = () => {
                                                     {pub.citeAs && <p><strong>Cite As:</strong> {pub.citeAs}</p>}
                                                     {pub.proofOfPublication && (
                                                         <p><strong>Proof of Publication:</strong>
-                                                            <a href={`http://localhost:5002/${pub.proofOfPublication}`} target="_blank" rel="noopener noreferrer">View Proof</a>
-                                                        </p>
+                                                        <a href={`http://localhost:5002${pub.proofOfPublication}`} target="_blank" rel="noopener noreferrer">View Proof</a>
+                                                    </p>
+                                                    
                                                     )}
                                                 </div>
                                             </div>

@@ -25,24 +25,38 @@ const EditPublicationsPage = () => {
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
-    
+      
         try {
-            const formDataToSend = new FormData();
+            const formDataToSend = {};
     
-            // Append only defined and non-empty values
+            // Ensure formData is converted to an object
             for (const [key, value] of Object.entries(formData)) {
-                if (value !== undefined && value !== null) {
-                    formDataToSend.append(key, value);
+                if (value !== undefined && value !== null && value !== '') {
+                    formDataToSend[key] = value; // Add key-value pairs to the object
                 }
             }
     
-            const response = await fetch(`http://localhost:5002/update-publication/${pub.publication_id}`, {
+            // Set the status to 'applied' before sending the update
+            formDataToSend.status = 'Applied'; // This ensures the status is updated to 'applied'
+    
+            // Log to check form data before sending
+            console.log("Form Data to Send:", formDataToSend);
+    
+            if (Object.keys(formDataToSend).length === 0) {
+                alert('No fields to update');
+                return;
+            }
+    
+            const response = await fetch(`http://localhost:5002/update-publication/${pub.publicationId}`, {
                 method: 'PUT',
-                body: formDataToSend,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formDataToSend), // Send as JSON
             });
     
             if (!response.ok) {
-                const errorDetails = await response.json(); // If server provides error details
+                const errorDetails = await response.json();
                 console.error('Error details:', errorDetails);
                 throw new Error('Failed to update publication');
             }

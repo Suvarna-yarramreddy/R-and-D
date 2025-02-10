@@ -22,8 +22,6 @@ const LoginCorPage = () => {
 
     if (!loginData.coordinatorid || !loginData.password1 || !loginData.department) {
       setErrorMessage("All fields are required.");
-    } else if (loginData.password1.length < 6) {
-      setErrorMessage("Password must be at least 6 characters.");
     } else {
       setErrorMessage("");
 
@@ -32,9 +30,9 @@ const LoginCorPage = () => {
 
         if (response.data.success) {
           // Set session storage
-          const {corid} = response.data;  // Error here because `coordinatorid` is not sent in response
+          const {coordinatorid} = response.data;  // Error here because `coordinatorid` is not sent in response
           sessionStorage.setItem("isLoggedIn", "true");
-          sessionStorage.setItem("coordinatorid", corid);
+          sessionStorage.setItem("coordinatorid", coordinatorid);
           sessionStorage.setItem("role", "coordinator"); // Set role for coordinator
 
           // Navigate to coordinator dashboard

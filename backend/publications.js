@@ -4,11 +4,10 @@ const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { v4: uuidv4 } = require("uuid"); // Import the uuid library
 
-// Initialize Firebase Admin (Firestore only)
+// Firebase setup
 const admin = require("firebase-admin");
-const serviceAccount = require("./key.json"); // Path to your service account key
+const serviceAccount = require("./key.json");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -17,20 +16,17 @@ const db = admin.firestore();
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
+// Multer Storage Setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, 'uploads', 'publications'); // Create publications folder inside uploads
-    
-    // Check if the 'publications' directory exists, if not create it
+    const uploadDir = path.join(__dirname, 'uploads', 'publications');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-
-    cb(null, uploadDir); // Specify the 'publications' directory for file storage
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + path.extname(file.originalname);
@@ -40,12 +36,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Default route
-app.get("/", (req, res) => {
-  res.send("Server is running! Access the /addPublication and /getPublications endpoints.");
-});
-
-// Add Publication Endpoint
+// Add Publication (Without Subcollection)
 app.post("/addPublication", upload.single("proofOfPublication"), async (req, res) => {
   try {
     const {
@@ -74,20 +65,21 @@ app.post("/addPublication", upload.single("proofOfPublication"), async (req, res
       citeAs,
     } = req.body;
 
-    let proofOfPublicationUrl = null;
-
-    // Store file locally and get its path
-    if (req.file) {
-      const filePath = path.join(__dirname, "uploads", req.file.filename); // Absolute path of the uploaded file
-      proofOfPublicationUrl = `http://localhost:5002/uploads/${req.file.filename}`; // URL to access the file locally
+    if (!faculty_id) {
+      return res.status(400).send("Faculty ID is required");
     }
 
-    // Generate a unique ID for the publication
-    const publicationId = uuidv4(); // Use uuid to generate a unique ID
+    let proofOfPublicationUrl = null;
+    if (req.file) {
+      proofOfPublicationUrl = `/uploads/publications/${req.file.filename}`;
+    }
 
-    // Save publication data to Firestore with custom document ID
-    const publication = {
-      faculty_id,
+    // Generate a unique ID for each publication
+    const publicationId = `pub-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    // Construct the publication object
+    const newPublication = {
+      publicationId,
       natureOfPublication,
       typeOfPublication,
       titleOfPaper,
@@ -111,37 +103,47 @@ app.post("/addPublication", upload.single("proofOfPublication"), async (req, res
       monthYear,
       citeAs,
       proofOfPublication: proofOfPublicationUrl,
-      status: "Applied", // Default status
+      status: "Applied",
     };
 
-    // Add the publication document with the custom ID
-    await db.collection("publications").doc(publicationId).set(publication);
+    // Store publication inside the faculty document (as an array)
+    const facultyRef = db.collection("publications").doc(faculty_id);
+    const facultyDoc = await facultyRef.get();
 
-    res.status(200).send("Publication added successfully");
+    if (facultyDoc.exists) {
+      // Append new publication to the existing array
+      await facultyRef.update({
+        publications: admin.firestore.FieldValue.arrayUnion(newPublication),
+      });
+    } else {
+      // Create a new document with the publication array
+      await facultyRef.set({
+        faculty_id,
+        publications: [newPublication],
+      });
+    }
+
+    res.status(200).json({ message: "Publication added successfully", publicationId });
   } catch (error) {
-    console.error("Error while adding publication:", error);
-    res.status(500).send("Error while adding publication");
+    console.error("Error adding publication:", error);
+    res.status(500).send("Error adding publication");
   }
 });
 
-// Get Publications Endpoint
+// Get Publications by Faculty ID (Without Subcollection)
 app.get("/getPublications/:faculty_id", async (req, res) => {
   try {
-    const faculty_id = req.params.faculty_id;
+    const { faculty_id } = req.params;
 
-    const publicationsSnapshot = await db
-      .collection("publications")
-      .where("faculty_id", "==", faculty_id)
-      .get();
+    const facultyRef = db.collection("publications").doc(faculty_id);
+    const facultyDoc = await facultyRef.get();
 
-    if (publicationsSnapshot.empty) {
+    if (!facultyDoc.exists) {
       return res.status(404).json({ message: "No publications found" });
     }
 
-    const publications = publicationsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const facultyData = facultyDoc.data();
+    const publications = facultyData.publications || [];
 
     res.json(publications);
   } catch (error) {
@@ -150,10 +152,47 @@ app.get("/getPublications/:faculty_id", async (req, res) => {
   }
 });
 
-// Serve static files (uploaded files)
+// Update Publication (Without Subcollection)
+app.put("/update-publication/:faculty_id/:publicationId", async (req, res) => {
+  try {
+    const { faculty_id, publicationId } = req.params;
+    const updatedPublication = req.body;
+
+    if (Object.keys(updatedPublication).length === 0) {
+      return res.status(400).json({ message: "Invalid data. Please provide fields to update." });
+    }
+
+    const facultyRef = db.collection("publications").doc(faculty_id);
+    const facultyDoc = await facultyRef.get();
+
+    if (!facultyDoc.exists) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+
+    let publications = facultyDoc.data().publications || [];
+
+    // Find and update the publication in the array
+    const index = publications.findIndex(pub => pub.publicationId === publicationId);
+    if (index === -1) {
+      return res.status(404).json({ message: "Publication not found" });
+    }
+
+    publications[index] = { ...publications[index], ...updatedPublication };
+
+    // Update the faculty document with the modified publications array
+    await facultyRef.update({ publications });
+
+    res.json({ message: "Publication updated successfully" });
+  } catch (error) {
+    console.error("Error updating publication:", error);
+    res.status(500).json({ message: "Error updating publication", error });
+  }
+});
+
+// Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Start the server
+// Start Server
 const PORT = 5002;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

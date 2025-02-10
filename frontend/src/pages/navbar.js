@@ -33,12 +33,12 @@ const Navbar = ({ setIsLoggedIn, setRole }) => {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg" style={{ backgroundColor: "#d3d3d3" }}>
+    <nav className="navbar navbar-expand-lg bg-primary bg-opacity-100">
       <div className="container-fluid d-flex align-items-center">
         {/* Logo */}
         <div className="navbar-brand d-flex align-items-center">
           <img src={logo} alt="SVECW Logo" style={{ height: "60px" }} />
-          <span className="ms-2">SVECW</span>
+          <span className="ms-2"><b>SVECW</b></span>
         </div>
 
         {/* Navbar Toggle */}
